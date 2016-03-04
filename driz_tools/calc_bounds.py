@@ -134,4 +134,4 @@ if __name__ == '__main__':
     dec = coords[:,1]
     bounds(ra,dec,options.w)
     if options.p:
-        make_silhouette_plot(ra,dec,res,ims)
+        make_silhouette_plot(ra,dec,res)
