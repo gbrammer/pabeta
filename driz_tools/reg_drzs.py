@@ -37,7 +37,6 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    # drzs = ['ib6w81jmq_flt.fits']
     teal.teal('tweakreg')
     ir_ims, vis_ims = [], []
     options = parse_args()

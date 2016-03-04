@@ -12,7 +12,7 @@ def up_keywords(im):
             print '{} IS NOT AN ACS/WFC IMAGE'.format(im)
             return
         print 'Updating image for {} {} {}'.format(im,inst,dete)
-        path = '../../distortionfiles/'
+        path = '/astro/pabeta/distortionfiles/'
         npols = {'F435W': 'wfc_update3_CLEAR1L_F435W_npl.fits',
              'F475W': 'wfc_update3_F475W_CLEAR2L_npl.fits',
              'F502N': 'wfc_update3_F502N_CLEAR2L_npl.fits',

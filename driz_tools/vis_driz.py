@@ -4,6 +4,32 @@ import glob, os, shutil
 from astropy.io import fits
 from multiprocessing import Pool
 from stsci.tools import teal
+import argparse
+
+def parse_args():
+    """Parse command line arguements.
+
+    Parameters:
+        Nothing
+
+    Returns:
+        arguments: argparse.Namespace object
+            An object containing all of the added arguments.
+
+    Outputs:
+        Nothing
+    """
+
+    ncore_help = 'Number of cores to use with parallel processing? Default 8'
+    updatewcs_help = 'Update WCS? Default False.'
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-n', help=ncore_help, action='store',
+        required=False, default=8, type=int)
+    parser.add_argument('-u', help=updatewcs_help, action='store_true',
+        required=False)
+    arguments = parser.parse_args()
+    return arguments
 
 def upwcs(f):
   print f
@@ -31,13 +57,10 @@ def driz(exps):
         med_alg = 'median'
 
     if os.path.exists(fname+'_drz.fits') or os.path.exists(fname+'_drc.fits'): return
-    if fname == 'f814w_ngc3034_acs_wfc_8mx19':
-        # astrodrizzle.AstroDrizzle(exps,output=fname,num_cores=1, in_memory=False, clean=True, build=True, combine_type='median', runfile=fname)
-        return
     if hdr['DETECTOR'] == 'WFC':
         astrodrizzle.AstroDrizzle(exps,output=fname,num_cores=1, in_memory=False, clean=True, build=True, combine_type=med_alg, runfile=fname)
     else:
-        astrodrizzle.AstroDrizzle(exps,output=fname,num_cores=1, mdriztab=True, in_memory=False, clean=True, build=True, combine_type=med_alg, runfile=fname)
+        astrodrizzle.AstroDrizzle(exps,output=fname,num_cores=1, mdriztab=False, in_memory=False, clean=True, build=True, combine_type=med_alg, runfile=fname)
 
 def parse_wfc3_visit(visit):
     # print 'Processing orbit {} of {}'.format(i+1,len(wfc3_orbs))
@@ -76,6 +99,8 @@ def parse_acs_visit(visit):
     return exps_by_filt
 
 if __name__ == '__main__':
+    options = parse_args()
+
     for flc in glob.glob('*flc.fits'):
         if os.path.exists(flc.replace('flc.fits','flt.fits')):
             if not os.path.exists('extra_flts'):
@@ -91,7 +116,7 @@ if __name__ == '__main__':
 
     visbyfilt = []
 
-    p = Pool(8)
+    p = Pool(options.n)
     visbyfilt += p.map(parse_wfc3_visit,wfc3_orbs)
     visbyfilt += p.map(parse_acs_visit,acs_orbs)
 
@@ -100,12 +125,13 @@ if __name__ == '__main__':
         for ln in block:
             filter_visits.append(ln)
 
-    print '______________________________'
-    print '______________________________'
-    print 'Updating WCS'
-    print '______________________________'
-    print '______________________________'
-    p.map(upwcs, ims)
+    if options.u:
+        print '______________________________'
+        print '______________________________'
+        print 'Updating WCS'
+        print '______________________________'
+        print '______________________________'
+        p.map(upwcs, ims)
 
     print '______________________________'
     print '______________________________'
