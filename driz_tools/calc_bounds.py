@@ -21,7 +21,7 @@ def parse_args():
         Nothing
     """
 
-    input_help = 'Images to calculate bounds of. Default *dr?.fits'
+    input_help = 'Images to calculate bounds of. Default f*dr?.fits'
     plot_help = 'Plot bounding boxes of silhouettes? Default False'
     write_help = 'Write out file with ra/dec size/midpt? Default False'
 

@@ -52,16 +52,23 @@ def driz(exps):
     print targ, filt, len(exps)
     fname = '_'.join([filt,targ,inst,dete,pvis]).lower()
 
-    med_alg = 'minmed'
+    combine_nhigh = 1
+    med_alg = 'iminmed'
     if len(exps) > 4:
-        med_alg = 'median'
+        med_alg = 'imedian'
+        if len(exps) > 7:
+            combine_nhigh = 3
 
     if os.path.exists(fname+'_drz.fits') or os.path.exists(fname+'_drc.fits'): return
-    if hdr['DETECTOR'] == 'WFC':
-        astrodrizzle.AstroDrizzle(exps,output=fname,num_cores=1, in_memory=False, clean=True, build=True, combine_type=med_alg, runfile=fname)
-    else:
-        astrodrizzle.AstroDrizzle(exps,output=fname,num_cores=1, mdriztab=False, in_memory=False, clean=True, build=True, combine_type=med_alg, runfile=fname)
 
+    if det == 'IR':
+        astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
+                                in_memory=False,median=False, clean=True,build=True,
+                                blot=False,driz_cr=False,runfile='adriz_{}'.format(fname))
+    else:
+        astrodrizzle.AstroDrizzle(exps,output=fname,num_cores=1, in_memory=False,
+                        clean=True, build=True, combine_type=med_alg,
+                        runfile='adriz_{}'.format(fname), mdriztab=False, combine_nhigh=combine_nhigh)
 def parse_wfc3_visit(visit):
     # print 'Processing orbit {} of {}'.format(i+1,len(wfc3_orbs))
     # i+=1

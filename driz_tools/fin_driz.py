@@ -6,6 +6,7 @@ from multiprocessing import Pool
 from stsci.tools import teal
 import argparse
 import math
+import numpy as np
 
 def parse_args():
     """Parse command line arguements.
@@ -117,6 +118,16 @@ def final_drizzle(exps):
     targ = os.getcwd().split('/')[-1]
     det = hdr['DETECTOR']
     out = '_'.join([filt, targ, inst, det])
+
+    print out, len(exps)
+
+    combine_nhigh = 1
+    med_alg = 'iminmed'
+    if len(exps) > 4:
+        med_alg = 'imedian'
+        if len(exps) > 7:
+            combine_nhigh = 3
+
     if det == 'IR':
         scl = 0.1
     elif det == 'WFC' or det == 'UVIS':
@@ -130,10 +141,20 @@ def final_drizzle(exps):
         dec = dims[1,1]
     else:
         outnx, outny, ra, dec = None, None, None, None
-    astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
-                            in_memory=False,final_wcs=True,final_rot=0.,
-                            final_outnx=outnx,final_outny=outny, final_ra=ra,
-                            final_dec=dec,final_scale=scl)
+    if det == 'IR':
+        astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
+                                in_memory=False,final_wcs=True,final_rot=0.,
+                                final_outnx=outnx,final_outny=outny, final_ra=ra,
+                                final_dec=dec,final_scale=scl,median=False,
+                                blot=False,driz_cr=False,runfile='ADRIZ_{}'.format(out),
+                                clean=True,build=True)
+    else:
+        astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
+                                in_memory=False,final_wcs=True,final_rot=0.,
+                                final_outnx=outnx,final_outny=outny, final_ra=ra,
+                                final_dec=dec,final_scale=scl,combine_type=med_alg,
+                                combine_nhigh=combine_nhigh,runfile='ADRIZ_{}'.format(out),
+                                clean=True,build=True)
 
 if __name__ == '__main__':
     options = parse_args()

@@ -59,14 +59,14 @@ if __name__ == '__main__':
         elif hdr['DETECTOR'] == 'UVIS' or hdr['DETECTOR'] == 'WFC':
             vis_ims.append(f)
     if fits.getval(ref, 'DETECTOR') == 'IR':
-        thresh = 50.
+        thresh = 10.
         cw = 2.5
     elif fits.getval(ref, 'DETECTOR') == 'UVIS' or fits.getval(ref, 'DETECTOR') == 'WFC':
-        thresh = 50.
+        thresh = 100.
         cw = 3.5
     if len(vis_ims)>0:
         tweakreg.TweakReg(vis_ims, updatehdr=True, expand_refcat=True,enforce_user_order=False,refimage=ref,
-        imagefindcfg={'threshold':250.,'conv_width':3.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw})
+        imagefindcfg={'threshold':35.,'conv_width':3.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw})
     if len(ir_ims)>0:
         tweakreg.TweakReg(ir_ims, updatehdr=True, expand_refcat=True,enforce_user_order=False,refimage=ref,
-        imagefindcfg={'threshold':50.,'conv_width':2.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw})
+        imagefindcfg={'threshold':25.,'conv_width':2.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw})
