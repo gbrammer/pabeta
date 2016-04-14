@@ -8,7 +8,7 @@ import argparse
 
 
 def parse_args():
-    """Parse command line arguements.
+    """Parse command line arguments.
 
     Parameters:
         Nothing
@@ -37,10 +37,10 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    teal.teal('tweakreg')
     ir_ims, vis_ims = [], []
     options = parse_args()
     drzs = glob.glob(options.i)
+    for drz in drzs: print drz
     if len(drzs) == 0:
         print 'No input images'
         raise
@@ -62,11 +62,14 @@ if __name__ == '__main__':
         thresh = 10.
         cw = 2.5
     elif fits.getval(ref, 'DETECTOR') == 'UVIS' or fits.getval(ref, 'DETECTOR') == 'WFC':
-        thresh = 100.
+        thresh = 10.
         cw = 3.5
+    teal.teal('tweakreg')
     if len(vis_ims)>0:
         tweakreg.TweakReg(vis_ims, updatehdr=True, expand_refcat=True,enforce_user_order=False,refimage=ref,
-        imagefindcfg={'threshold':35.,'conv_width':3.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw})
+        imagefindcfg={'threshold':10.,'conv_width':3.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
+        shiftfile=True,outshifts='vis_shifts.txt')
     if len(ir_ims)>0:
         tweakreg.TweakReg(ir_ims, updatehdr=True, expand_refcat=True,enforce_user_order=False,refimage=ref,
-        imagefindcfg={'threshold':25.,'conv_width':2.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw})
+        imagefindcfg={'threshold':10.,'conv_width':2.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
+        shiftfile=True,outshifts='ir_shifts.txt')

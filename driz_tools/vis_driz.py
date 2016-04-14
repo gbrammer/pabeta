@@ -7,7 +7,7 @@ from stsci.tools import teal
 import argparse
 
 def parse_args():
-    """Parse command line arguements.
+    """Parse command line arguments.
 
     Parameters:
         Nothing
@@ -47,10 +47,10 @@ def driz(exps):
     prop = hdr['PROPOSID']
     vis = exps[0][4:6]
     inst = hdr['INSTRUME']
-    dete = hdr['DETECTOR']
+    det = hdr['DETECTOR']
     pvis = exps[0][1:6]
     print targ, filt, len(exps)
-    fname = '_'.join([filt,targ,inst,dete,pvis]).lower()
+    fname = '_'.join([filt,targ,inst,det,pvis]).lower()
 
     combine_nhigh = 1
     med_alg = 'iminmed'
@@ -61,8 +61,8 @@ def driz(exps):
 
     if os.path.exists(fname+'_drz.fits') or os.path.exists(fname+'_drc.fits'): return
 
-    if det == 'IR':
-        astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
+    if det == 'IR' or len(exps)<2:
+        astrodrizzle.AstroDrizzle(exps,output=fname, mdriztab=False, num_cores=1,
                                 in_memory=False,median=False, clean=True,build=True,
                                 blot=False,driz_cr=False,runfile='adriz_{}'.format(fname))
     else:

@@ -139,18 +139,19 @@ def final_drizzle(exps):
         outny = int(math.ceil(dims[0,1])/scl)
         ra = dims[1,0]
         dec = dims[1,1]
+        rot=0.
     else:
-        outnx, outny, ra, dec = None, None, None, None
-    if det == 'IR':
+        outnx, outny, ra, dec, rot = None, None, None, None, None
+    if det == 'IR' or len(exps)==1:
         astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
-                                in_memory=False,final_wcs=True,final_rot=0.,
+                                in_memory=False,final_wcs=True,final_rot=rot,
                                 final_outnx=outnx,final_outny=outny, final_ra=ra,
                                 final_dec=dec,final_scale=scl,median=False,
                                 blot=False,driz_cr=False,runfile='ADRIZ_{}'.format(out),
                                 clean=True,build=True)
     else:
         astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
-                                in_memory=False,final_wcs=True,final_rot=0.,
+                                in_memory=False,final_wcs=True,final_rot=rot,
                                 final_outnx=outnx,final_outny=outny, final_ra=ra,
                                 final_dec=dec,final_scale=scl,combine_type=med_alg,
                                 combine_nhigh=combine_nhigh,runfile='ADRIZ_{}'.format(out),
