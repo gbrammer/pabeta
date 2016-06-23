@@ -132,6 +132,8 @@ def final_drizzle(exps):
         scl = 0.1
     elif det == 'WFC' or det == 'UVIS':
         scl = 0.05
+    elif det == 'SBC':
+        scl = 0.05
 
     if os.path.exists('dimensions.txt'):
         dims = np.loadtxt('dimensions.txt')
@@ -165,3 +167,4 @@ if __name__ == '__main__':
     exps_by_filt = parse_filters(filts)
     teal.teal('astrodrizzle')
     Pool(8).map(final_drizzle,exps_by_filt)
+    # map(final_drizzle,exps_by_filt)

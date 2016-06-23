@@ -62,14 +62,14 @@ if __name__ == '__main__':
         thresh = 10.
         cw = 2.5
     elif fits.getval(ref, 'DETECTOR') == 'UVIS' or fits.getval(ref, 'DETECTOR') == 'WFC':
-        thresh = 10.
+        thresh = 100.
         cw = 3.5
     teal.teal('tweakreg')
     if len(vis_ims)>0:
         tweakreg.TweakReg(vis_ims, updatehdr=True, expand_refcat=True,enforce_user_order=False,refimage=ref,
-        imagefindcfg={'threshold':10.,'conv_width':3.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
+        imagefindcfg={'threshold':100.,'conv_width':3.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
         shiftfile=True,outshifts='vis_shifts.txt')
     if len(ir_ims)>0:
         tweakreg.TweakReg(ir_ims, updatehdr=True, expand_refcat=True,enforce_user_order=False,refimage=ref,
-        imagefindcfg={'threshold':10.,'conv_width':2.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
+        imagefindcfg={'threshold':4.,'conv_width':2.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
         shiftfile=True,outshifts='ir_shifts.txt')
