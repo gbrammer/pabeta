@@ -146,5 +146,5 @@ if __name__ == '__main__':
     print '______________________________'
     print '______________________________'
     print len(filter_visits)
-    teal.teal('astrodrizzle')
+    # teal.teal('astrodrizzle')
     p.map(driz, filter_visits)

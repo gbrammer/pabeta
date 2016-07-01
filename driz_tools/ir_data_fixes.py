@@ -68,7 +68,7 @@ def update_flt(raw):
     flb = flt.replace('flt.fits','flb.fits')
     if os.path.exists(flb):
         flb_data = fits.getdata(flb,1)
-        hdu['SCI'].data = flb_data.data
+        hdu['SCI'].data = flb_data
         print 'REPLACING PIPELINE FLT DATA WITH FLATTENED RAMP FOR {}'.format(flt)
         hdu[0].header['FLATRAMP'] = date
     hdu.close()

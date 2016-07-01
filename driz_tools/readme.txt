@@ -19,5 +19,21 @@ The scripts do the following:
     have same dimensions).
 5. Make final, full combined mosaics with desired scales etc. (F*dr?.fits)
 
+IN ADDITION:
+Two other scripts have been developed to increase overall data quality/usability:
+1. ir_data_fixes.py
+2. hsc_align.py
+
+1. Flattens F110W ramp, flags extra bad pixels, and masks persistence
+(Ideally run before step 1 in above, or have to redrizzle IR data)
+2. Aligns final top level mosaics (F*dr?.fits) to Hubble Source Catalog, and updates input FLT headers accordingly.
+(Run after step 5, or can just input HSC catalog into step 2)
 Some of the scripts work off of various command line arguments call them with
 the -h flag for more information.
+
+
+Things that need to be done:
+* Run ir_data_fixes on everything, and redrizzle accordingly
+    If already astrometrized to HSC, need to run calc_bounds again,
+    and then probably best to redrizzle the whole stack for a given target?
+* Find good way to rename WCS of top level mosaics if flts already aligned to HSC

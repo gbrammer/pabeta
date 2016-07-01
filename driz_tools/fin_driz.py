@@ -23,10 +23,13 @@ def parse_args():
     """
 
     filts_help = 'Filters to make final products. Default is all filters'
+    hipeec_help = 'USE Hi-PEEC scales: UVIS/WFC 0.04 IR 0.12 SBC 0.025. Default False'
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', help=filts_help, nargs='+',
         required=False, default=None)
+    parser.add_argument('-hipeec', help=hipeec_help, action='store_true',
+        required=False)
     # parser.add_argument('-i', type=str, help=input_help, action='store',
     #     required=False, default=inp)
     arguments = parser.parse_args()
@@ -120,7 +123,7 @@ def final_drizzle(exps):
     out = '_'.join([filt, targ, inst, det])
 
     print out, len(exps)
-
+    
     combine_nhigh = 1
     med_alg = 'iminmed'
     if len(exps) > 4:
@@ -128,12 +131,22 @@ def final_drizzle(exps):
         if len(exps) > 7:
             combine_nhigh = 3
 
+
     if det == 'IR':
         scl = 0.1
     elif det == 'WFC' or det == 'UVIS':
         scl = 0.05
     elif det == 'SBC':
-        scl = 0.05
+        scl = 0.025
+
+    if options.hipeec:
+        print 'USING HIPEEC PIXEL SCALES'
+        if det == 'IR':
+            scl = 0.12
+        elif det == 'WFC' or det == 'UVIS':
+            scl = 0.04
+        elif det == 'SBC':
+            scl = 0.025
 
     if os.path.exists('dimensions.txt'):
         dims = np.loadtxt('dimensions.txt')
@@ -144,7 +157,7 @@ def final_drizzle(exps):
         rot=0.
     else:
         outnx, outny, ra, dec, rot = None, None, None, None, None
-    if det == 'IR' or len(exps)==1:
+    if det == 'IR' or det == 'SBC' or len(exps)==1:
         astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
                                 in_memory=False,final_wcs=True,final_rot=rot,
                                 final_outnx=outnx,final_outny=outny, final_ra=ra,
@@ -165,6 +178,6 @@ if __name__ == '__main__':
     if options.f != None:
         filts = [filt.upper() for filt in options.f]
     exps_by_filt = parse_filters(filts)
-    teal.teal('astrodrizzle')
+    # teal.teal('astrodrizzle')
     Pool(8).map(final_drizzle,exps_by_filt)
     # map(final_drizzle,exps_by_filt)

@@ -23,15 +23,22 @@ def parse_args():
 
     ref_help = 'Reference image to align other drizzled images to.  Default is first image'
     input_help = 'Images to register.  Default is all visit level drizzle images (f*dr?.fits)'
+    refcat_help = 'Reference catalog to use.  Defaults is \'\' (Makes refcat from input images).'
+    teal_help = 'Show teal interface for TweakReg?  Default False'
 
     im = ''
     inp = 'f*dr?.fits'
+    refcat = ''
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', type=str, help=ref_help, action='store',
         required=False, default=im)
     parser.add_argument('-i', type=str, help=input_help, action='store',
         required=False, default=inp)
+    parser.add_argument('-c', type=str, help=ref_help, action='store',
+        required=False, default=refcat)
+    parser.add_argument('-t', help=teal_help, action='store_true',
+        required=False)
     arguments = parser.parse_args()
     return arguments
 
@@ -59,17 +66,25 @@ if __name__ == '__main__':
         elif hdr['DETECTOR'] == 'UVIS' or hdr['DETECTOR'] == 'WFC':
             vis_ims.append(f)
     if fits.getval(ref, 'DETECTOR') == 'IR':
-        thresh = 10.
+        thresh = 3.
         cw = 2.5
     elif fits.getval(ref, 'DETECTOR') == 'UVIS' or fits.getval(ref, 'DETECTOR') == 'WFC':
-        thresh = 100.
+        thresh = 50.
         cw = 3.5
-    teal.teal('tweakreg')
+
+    # Determine WCS name
+    if '_hsc.radec' in options.c:
+        wcsname = 'HSC'
+    else:
+        wcsname = 'TWEAK'
+
+    if options.t: teal.teal('tweakreg')
+
     if len(vis_ims)>0:
         tweakreg.TweakReg(vis_ims, updatehdr=True, expand_refcat=True,enforce_user_order=False,refimage=ref,
-        imagefindcfg={'threshold':100.,'conv_width':3.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
-        shiftfile=True,outshifts='vis_shifts.txt')
+        imagefindcfg={'threshold':15.,'conv_width':3.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
+        refcat=options.c,shiftfile=True,outshifts='vis_shifts.txt', wcsname=wcsname)
     if len(ir_ims)>0:
         tweakreg.TweakReg(ir_ims, updatehdr=True, expand_refcat=True,enforce_user_order=False,refimage=ref,
-        imagefindcfg={'threshold':4.,'conv_width':2.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
-        shiftfile=True,outshifts='ir_shifts.txt')
+        imagefindcfg={'threshold':3.,'conv_width':2.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
+        refcat=options.c,shiftfile=True,outshifts='ir_shifts.txt', wcsname=wcsname)
