@@ -1,0 +1,16 @@
+TARGNAME	HSC_ALIGN	IR_FIXES
+NGC7090		True		True
+NGC6090		True		True
+NGC6217		True		True
+VV340A		True		True
+NGC7592		True		True
+MCG+12-02-001	True		True
+NGC2623		True		True
+PGC4798		None		True
+UGC5256		True		True
+NGC2551		True		True
+NGC1396		True		True
+ESO550-IG025	True		True
+IRAS03582+6012	None		True
+IRAS05223+1908	True		True
+M82		False		True
