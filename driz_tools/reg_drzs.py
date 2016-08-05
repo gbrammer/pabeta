@@ -35,7 +35,7 @@ def parse_args():
         required=False, default=im)
     parser.add_argument('-i', type=str, help=input_help, action='store',
         required=False, default=inp)
-    parser.add_argument('-c', type=str, help=ref_help, action='store',
+    parser.add_argument('-c', type=str, help=refcat_help, action='store',
         required=False, default=refcat)
     parser.add_argument('-t', help=teal_help, action='store_true',
         required=False)
@@ -66,10 +66,10 @@ if __name__ == '__main__':
         elif hdr['DETECTOR'] == 'UVIS' or hdr['DETECTOR'] == 'WFC':
             vis_ims.append(f)
     if fits.getval(ref, 'DETECTOR') == 'IR':
-        thresh = 3.
+        thresh = 5.
         cw = 2.5
     elif fits.getval(ref, 'DETECTOR') == 'UVIS' or fits.getval(ref, 'DETECTOR') == 'WFC':
-        thresh = 50.
+        thresh = 20.
         cw = 3.5
 
     # Determine WCS name
@@ -81,10 +81,10 @@ if __name__ == '__main__':
     if options.t: teal.teal('tweakreg')
 
     if len(vis_ims)>0:
-        tweakreg.TweakReg(vis_ims, updatehdr=True, expand_refcat=True,enforce_user_order=False,refimage=ref,
-        imagefindcfg={'threshold':15.,'conv_width':3.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
+        tweakreg.TweakReg(vis_ims, updatehdr=True, expand_refcat=False,enforce_user_order=False,refimage=ref,
+        imagefindcfg={'threshold':5.,'conv_width':3.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
         refcat=options.c,shiftfile=True,outshifts='vis_shifts.txt', wcsname=wcsname)
     if len(ir_ims)>0:
-        tweakreg.TweakReg(ir_ims, updatehdr=True, expand_refcat=True,enforce_user_order=False,refimage=ref,
-        imagefindcfg={'threshold':3.,'conv_width':2.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
+        tweakreg.TweakReg(ir_ims, updatehdr=True, expand_refcat=False,enforce_user_order=True,refimage=ref,
+        imagefindcfg={'threshold':5.,'conv_width':2.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
         refcat=options.c,shiftfile=True,outshifts='ir_shifts.txt', wcsname=wcsname)

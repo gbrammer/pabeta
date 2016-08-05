@@ -1,11 +1,14 @@
-from astropy.io import fits
-from drizzlepac import pixtosky
-import glob, os, shutil
-from multiprocessing import Pool
 import argparse
-import numpy as np
+import glob
 import math
+import os
+import shutil
 
+from astropy.io import fits
+from astropy.wcs import WCS
+from drizzlepac import pixtosky
+from multiprocessing import Pool
+import numpy as np
 
 def parse_args():
     """Parse command line arguements.
@@ -35,44 +38,27 @@ def parse_args():
     arguments = parser.parse_args()
     return arguments
 
-def get_corners(im):
-    """Calculate ra/dec positions of image corners
+def get_footprints(im):
+    fps = []
+    hdu = fits.open(im)
+    flt_flag = 'flt.fits' in im or 'flc.fits' in im
+    for ext in hdu:
+        if 'SCI' in ext.name:
+            hdr = ext.header
+            wcs = WCS(hdr, hdu)
+            fp = wcs.calc_footprint(hdr, undistort=flt_flag)
+            fps.append(fp)
+    return fps
 
-    Parameters:
-        im : string
-            The name of the image on which to calculate corner positions
 
-    Returns:
-        (r,d) : tuple of ndarrays
-            first element is array of corners' RAs, second is array of corners' Decs
-
-    Outputs:
-        Nothing
-    """
-    hdr = fits.getheader(im,1)
-    xmax = hdr['NAXIS1']-1
-    ymax = hdr['NAXIS2']-1
-    data = fits.getdata(im)
-    r,d = pixtosky.xy2rd(im+'[sci,1]',hms=False,x=[0,0,xmax,xmax],y=[0,ymax,ymax,0])
-    if 'flt.fits' in im or 'flc.fits' in im:
-        try:
-            r2,d2 = pixtosky.xy2rd(im+'[sci,2]',hms=False,x=[0,0,xmax,xmax],y=[0,ymax,ymax,0])
-            r[1] = r2[1]
-            d[1] = d2[1]
-            r[2] = r2[2]
-            d[2] = d2[2]
-        except:
-            print 'FLT/FLC is not multichip'
-    return r,d
-
-def bounds(ra,dec,write=False):
+def bounds(fp_list,write=False):
     """Calculate RA/Dec bounding box properties from multiple RA/Dec points
 
     Parameters:
-        ra : ndarray
-            array of right ascension positions
-        dec : ndarray
-            array of declination positions
+        fp_list : list of list of ndarrays
+            each ndarray is a 4x2 array corresponding to the sky positions
+            of the 4 corners of a science extension.
+            [[im1 ext1 corners, im1 ext2 corners], [im2 ext1 corners]]
         write : bool
             switch controlling writing of file with bounding box parameters
 
@@ -84,6 +70,15 @@ def bounds(ra,dec,write=False):
             output file containing RA/Dec dimensions in arcsec, as well as
             RA/dec midpts in decimal degrees
     """
+    # flatten list of extensions into numpy array of all corner positions
+    merged = []
+    for im in fp_list:
+        for ext in im:
+            merged.append(ext)
+    merged = np.vstack(merged)
+    print merged.shape
+    ra = merged[:,0]
+    dec = merged[:,1]
     delta_ra = (max(ra)-min(ra))*math.cos(math.radians(min(np.absolute(dec))))
     delta_dec = max(dec)-min(dec)
     delta_ra_arcsec = delta_ra*3600.
@@ -101,37 +96,42 @@ def bounds(ra,dec,write=False):
     print 'OUTPUT IMAGE IS {}\" x {}\"'.format(delta_ra_arcsec, delta_dec_arcsec)
     print 'IR: {} x {} pix'.format(delta_ra_arcsec/0.1, delta_dec_arcsec/0.1)
     print 'UVIS+WFC: {} x {} pix'.format(delta_ra_arcsec/0.05, delta_dec_arcsec/0.05)
-    return
+    return ra, dec
 
-def make_silhouette_plot(ra,dec,res):
+def make_silhouette_plot(fp_list, ra, dec):
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
     from matplotlib.path import Path
     import matplotlib.patches as patches
-    colors = cm.rainbow(np.linspace(0, 1, len(res)))
+
+    colors = cm.rainbow(np.linspace(0, 1, len(fp_list)))
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    n_images = len(res)
+    n_images = len(fp_list)
     alpha = 1./float(n_images+1.)+.1
-    for i in range(len(res)):
-        verts = np.array(res[i]).T
-        codes = [Path.MOVETO,Path.LINETO,Path.LINETO,Path.LINETO]
-        path = Path(verts, codes)
-        patch = patches.PathPatch(path, facecolor=colors[i], lw=1, alpha=alpha)
-        ax.add_patch(patch)
-    ax.set_xlim(max(ra),min(ra))
+
+    for i in range(len(fp_list)):
+        im = fp_list[i]
+        for ext in im:
+            plot_patch(ax,ext,colors[i],alpha)
+    ax.set_xlim(min(ra),max(ra))
     ax.set_ylim(min(dec),max(dec))
     plt.show()
+
+def plot_patch(ax ,corners, color, alpha):
+    from matplotlib.path import Path
+    import matplotlib.patches as patches
+    codes = [Path.MOVETO,Path.LINETO,Path.LINETO,Path.LINETO]
+    path = Path(corners, codes)
+    patch = patches.PathPatch(path, facecolor=color, lw=1, alpha=alpha)
+    ax.add_patch(patch)
+
 
 if __name__ == '__main__':
     options = parse_args()
     ims = glob.glob(options.i)
     p = Pool(8)
-    res = p.map(get_corners,ims)
-    print ' ___________ '
-    coords = np.concatenate([np.array(cor_poss).T for cor_poss in res])
-    ra = coords[:,0]
-    dec = coords[:,1]
-    bounds(ra,dec,options.w)
+    fp_list = p.map(get_footprints, ims)
+    ra, dec = bounds(fp_list,options.w)
     if options.p:
-        make_silhouette_plot(ra,dec,res)
+        make_silhouette_plot(fp_list, ra, dec)

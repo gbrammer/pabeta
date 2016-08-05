@@ -5,6 +5,7 @@ from multiprocessing import Pool
 import argparse
 import glob, os, shutil
 from back_wcs import tback
+from stsci.tools import teal
 
 def parse_args():
     """Parse command line arguments.
@@ -22,6 +23,7 @@ def parse_args():
 
     input_help = 'Image to register.  Shifts calculated will apply to all mosaics.  Default is F814W*drc.fits'
     align_help = 'Calculate alignments using TweakReg?  Default False.'
+    teal_help = 'Show teal interface for TweakReg?  Default False'
 
     inp = 'F814W*drc.fits'
 
@@ -31,6 +33,8 @@ def parse_args():
         required=False, default=inp)
     parser.add_argument('-a', help=align_help, action='store_true',
         required=False)
+    parser.add_argument('-t', help=teal_help, action='store_true',
+            required=False)
     arguments = parser.parse_args()
     return arguments
 
@@ -42,6 +46,8 @@ def calc_shift(im, radec):
         cw = 3.5
     elif det == 'UVIS':
         cw = 3.5*(0.04/0.05)
+    elif det == 'IR':
+        cw = 2.5*(0.13/.1)
     tweakreg.TweakReg(im, updatehdr=False, expand_refcat=False,enforce_user_order=True,
     imagefindcfg={'threshold':3.,'conv_width':cw},refcat=radec,shiftfile=True,
     outshifts='single_shift.txt',outwcs='hsc_shifts_wcs.fits', refimage=None)
@@ -110,10 +116,23 @@ if __name__ == '__main__':
         raise ValueError('Too many input arguments')
     targ = os.path.split(os.getcwd())[-1]
     cat_path = '/astro/pabeta/HSC_Catalogs'
-    cat = '{}/{}_hsc.radec'.format(cat_path,targ)
+    all_cats = glob.glob('{}/*_hsc.radec'.format(cat_path))
+    cats = []
+
+    if options.t: teal.teal('tweakreg')
+
+    for derp in all_cats:
+        if targ in derp.upper():
+            print derp
+            cats.append(derp)
+    if len(cats) > 1:
+        print 'TOO MANY CATALOGS MATCHED'
+        raise
+    else:
+        cat = cats[0]
     if os.path.exists(cat):
         shutil.copy(cat,'.')
-        cat = '{}_hsc.radec'.format(targ)
+        cat = os.path.split(cat)[-1]
         print cat
         if options.a: calc_shift(ims[0],cat)
         shift_wrap()

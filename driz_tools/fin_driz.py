@@ -122,8 +122,10 @@ def final_drizzle(exps):
     det = hdr['DETECTOR']
     out = '_'.join([filt, targ, inst, det])
 
+    if os.path.exists(out+'_drz.fits') or os.path.exists(out+'_drc.fits'): return
+
     print out, len(exps)
-    
+
     combine_nhigh = 1
     med_alg = 'iminmed'
     if len(exps) > 4:
@@ -172,12 +174,19 @@ def final_drizzle(exps):
                                 combine_nhigh=combine_nhigh,runfile='ADRIZ_{}'.format(out),
                                 clean=True,build=True)
 
+    input_wcs = fits.getval(exps[0],'wcsname',1)
+    if input_wcs == 'HSC':
+        prod_name = glob.glob('{}_dr?.fits'.format(out))[0]
+        fits.setval(prod_name,keyword='wcsname',value='HSC',extname='sci')
+
+
 if __name__ == '__main__':
     options = parse_args()
     filts = options.f
     if options.f != None:
         filts = [filt.upper() for filt in options.f]
     exps_by_filt = parse_filters(filts)
-    # teal.teal('astrodrizzle')
-    Pool(8).map(final_drizzle,exps_by_filt)
+    teal.teal('astrodrizzle')
+    p = Pool(24)
+    p.map(final_drizzle,exps_by_filt)
     # map(final_drizzle,exps_by_filt)

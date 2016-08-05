@@ -9,6 +9,28 @@ import numpy.ma
 import wfc3tools
 from datetime import datetime
 
+def parse_args():
+    """Parse command line arguements.
+
+    Parameters:
+        Nothing
+
+    Returns:
+        arguments: argparse.Namespace object
+            An object containing all of the added arguments.
+
+    Outputs:
+        Nothing
+    """
+
+    copy_help = 'Copy files back to original target directory? Default False'
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', help=copy_help, action='store_true',
+        required=False)
+    arguments = parser.parse_args()
+    return arguments
+
 def fix_ramp(raw):
     if fits.getval(raw,'filter') != 'F110W' or os.path.exists(raw.replace('raw.fits','flb.fits')) or fits.getval(raw,'subarray') == 'T':
         return
@@ -33,8 +55,8 @@ def update_flt(raw):
     flt = raw.replace('raw.fits', 'flt.fits')
     if not os.path.exists(flt):
         orig_flt = glob.glob('../targets/*/{}'.format(flt))[0]
-        print 'BEGINNING FLT UPDATE'
-        print '________________________________________________________'
+        # print 'BEGINNING FLT UPDATE'
+        # print '________________________________________________________'
         shutil.copy(orig_flt, '.')
     else:
         print 'FLT {} already in directory, skipping'.format(flt)
@@ -72,7 +94,7 @@ def update_flt(raw):
         print 'REPLACING PIPELINE FLT DATA WITH FLATTENED RAMP FOR {}'.format(flt)
         hdu[0].header['FLATRAMP'] = date
     hdu.close()
-    return
+    return flt
 
 
 def check_flt(flt_path):
@@ -89,6 +111,34 @@ def check_flt(flt_path):
             # raise
     return None
 
+def get_targ_dir(flt):
+    orig_flt = glob.glob('../targets/*/{}'.format(flt))[0]
+    targ_dir = os.path.split(orig_flt)[0]
+    return targ_dir
+
+def backup_flts(targ_dir):
+    # Copies 'unfixed' flts into backup folder within target directory
+    print targ_dir
+    backup_dir = '{}/backup_flts'.format(targ_dir)
+    if not os.path.exists(backup_dir):
+        os.mkdir(backup_dir)
+    for flt_path in glob.glob('{}/i*flt.fits'.format(targ_dir)):
+        flt = os.path.split(flt_path)[-1]
+        if os.path.exists(flt):
+            if os.path.exists('{}/{}'.format(backup_dir,flt)) or 'BPIXFLAG' in fits.getheader(flt_path):
+                print 'BACKUP EXISTS OR NON-ORIGINAL FOR {}'.format(flt_path)
+                continue
+            else:
+                shutil.move(flt_path,backup_dir)
+                shutil.copy(flt,targ_dir)
+        else: continue
+    return
+
+def copy_fixed_flts(flts):
+    p = Pool(32)
+    targ_dirs = set(p.map(get_targ_dir,flts))
+    p.map(backup_flts, targ_dirs)
+
 if __name__ == '__main__':
     import sys
     sys.path.insert(0, '/astro/pabeta/wfc3/')
@@ -97,7 +147,11 @@ if __name__ == '__main__':
     p = Pool(32)
     missing_ids = p.map(check_flt, glob.glob('/astro/pabeta/targets/*/i*flt.fits'))
     Pool(16).map(fix_ramp, raws)
-    p.map(update_flt, raws)
+    fixed_flts = p.map(update_flt, raws)
+    if None in fixed_flts:
+        fixed_flts.remove(None)
+    copy_fixed_flts(fixed_flts)
+
     if missing_ids.count(None) == len(missing_ids):
         print 'ALL RAWS HERE'
     else:
