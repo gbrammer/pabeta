@@ -23,13 +23,22 @@ def parse_args():
     """
 
     filts_help = 'Filters to make final products. Default is all filters'
-    hipeec_help = 'USE Hi-PEEC scales: UVIS/WFC 0.04 IR 0.12 SBC 0.025. Default False'
+    hipeec_help = 'USE Hi-PEEC scales: UVIS/WFC 0.04 IR 0.12 SBC 0.03. Default False'
+    teal_help = 'Show teal interface for AstroDrizzle?  Default False'
+    scl_help = 'Use default camera pixel scales?  Default False.'
+    ncore_help = 'Number of cores to use with parallel processing? Default 32'
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', help=filts_help, nargs='+',
         required=False, default=None)
     parser.add_argument('-hipeec', help=hipeec_help, action='store_true',
         required=False)
+    parser.add_argument('-t', help=teal_help, action='store_true',
+        required=False)
+    parser.add_argument('-d', help=scl_help, action='store_true',
+        required=False)
+    parser.add_argument('-n', help=ncore_help, action='store',
+        required=False, default=32, type=int)
     # parser.add_argument('-i', type=str, help=input_help, action='store',
     #     required=False, default=inp)
     arguments = parser.parse_args()
@@ -40,14 +49,31 @@ def wfc3_exp_filt(im):
     filt = fits.getval(im,'FILTER')
     return (im,filt)
 
+def wfpc2_exp_filt(im):
+    """Return filter used in WFPC2 image"""
+    filt = fits.getval(im,'FILTNAM1')
+    return (im,filt)
+
+def wfpc2_hdr_corr(im):
+    """Add information to WFPC2 Data Global Header"""
+    hdu = fits.open(im,mode='update')
+    det = hdu[1].header['DETECTOR']
+    if det == 1:
+        hdu[0].header['DETECTOR'] = 'PC'
+    elif det in [2, 3, 4]:
+        hdu[0].header['DETECTOR'] = 'WFC'
+    hdu.close()
+
 def acs_exp_filt(im):
     """Return real (non CLEAR*) filter used in ACS image"""
     hdr = fits.getheader(im)
     filt1 = hdr['FILTER1']
     filt2 = hdr['FILTER2']
+    det = hdr['DETECTOR']
     filt = filt1
     if filt1 == 'CLEAR1L' or filt1 == 'CLEAR1S':
         filt = filt2
+    filt+=det
     return (im,filt)
 
 def make_filt_dict(im_filts):
@@ -90,6 +116,7 @@ def parse_filters(filts=None):
     p = Pool(32)
     acs_ims = glob.glob('j*fl?.fits')
     wfc3_ims = glob.glob('i*fl?.fits')
+    wfpc2_ims = glob.glob('u*c0m.fits')
     exps_by_filt = []
     if len(wfc3_ims) > 0:
         wfc3_im_filts = p.map(wfc3_exp_filt,wfc3_ims)
@@ -105,6 +132,14 @@ def parse_filters(filts=None):
             for filt in acs_dict.keys():
                 if filt not in filts: del acs_dict[filt]
         exps_by_filt += acs_dict.values()
+    if len(wfpc2_ims) > 0:
+        wfpc2_im_filts = p.map(wfpc2_exp_filt,wfpc2_ims)
+        p.map(wfpc2_hdr_corr,wfpc2_ims)
+        wfpc2_dict = make_filt_dict(wfpc2_im_filts)
+        if filts != None:
+            for filt in wfpc2_dict.keys():
+                if filt not in filts: del wfpc2_dict[filt]
+        exps_by_filt += wfpc2_dict.values()
 
     return exps_by_filt
 
@@ -117,12 +152,16 @@ def final_drizzle(exps):
         filt = filt1
         if filt1 == 'CLEAR1L' or filt1 == 'CLEAR1S':
             filt = filt2
+    elif inst == 'WFPC2':
+        filt = hdr['FILTNAM1']
     else: filt = hdr['FILTER']
     targ = os.getcwd().split('/')[-1]
     det = hdr['DETECTOR']
     out = '_'.join([filt, targ, inst, det])
 
-    if os.path.exists(out+'_drz.fits') or os.path.exists(out+'_drc.fits'): return
+    if os.path.exists(out+'_drz.fits') or os.path.exists(out+'_drc.fits'):
+        print 'file exists: ', out+'_drz.fits'
+        return
 
     print out, len(exps)
 
@@ -136,18 +175,28 @@ def final_drizzle(exps):
 
     if det == 'IR':
         scl = 0.1
-    elif det == 'WFC' or det == 'UVIS':
+    elif det == 'WFC' or det == 'UVIS' or det == 'PC':
         scl = 0.05
-    elif det == 'SBC':
+    elif det == 'SBC' or det == 'HRC':
         scl = 0.025
 
     if options.hipeec:
         print 'USING HIPEEC PIXEL SCALES'
         if det == 'IR':
             scl = 0.12
-        elif det == 'WFC' or det == 'UVIS':
+        elif det == 'WFC' or det == 'UVIS' or det == 'PC':
             scl = 0.04
-        elif det == 'SBC':
+        elif det == 'SBC' or det == 'HRC':
+            scl = 0.03
+
+    if options.d:
+        if det == 'IR':
+            scl = 0.13
+        elif det == 'WFC' or det == 'PC':
+            scl = 0.05
+        elif det == 'UVIS':
+            scl = 0.04
+        elif det == 'SBC' or det == 'HRC':
             scl = 0.025
 
     if os.path.exists('dimensions.txt'):
@@ -159,16 +208,26 @@ def final_drizzle(exps):
         rot=0.
     else:
         outnx, outny, ra, dec, rot = None, None, None, None, None
+
+
     if det == 'IR' or det == 'SBC' or len(exps)==1:
         astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
-                                in_memory=False,final_wcs=True,final_rot=rot,
+                                in_memory=True,final_wcs=True,final_rot=rot,
                                 final_outnx=outnx,final_outny=outny, final_ra=ra,
                                 final_dec=dec,final_scale=scl,median=False,
                                 blot=False,driz_cr=False,runfile='ADRIZ_{}'.format(out),
-                                clean=True,build=True)
+                                clean=True,build=True
+    elif det == 'PC':
+        astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
+                                in_memory=True,final_wcs=True,final_rot=rot,
+                                final_outnx=outnx,final_outny=outny, final_ra=ra,
+                                final_dec=dec,final_scale=scl,combine_type=med_alg,
+                                combine_nhigh=combine_nhigh,runfile='ADRIZ_{}'.format(out),
+                                clean=True,build=True, driz_cr_snr='5.5 3.5',
+                                driz_cr_scale='2.0 1.5')
     else:
         astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
-                                in_memory=False,final_wcs=True,final_rot=rot,
+                                in_memory=True,final_wcs=True,final_rot=rot,
                                 final_outnx=outnx,final_outny=outny, final_ra=ra,
                                 final_dec=dec,final_scale=scl,combine_type=med_alg,
                                 combine_nhigh=combine_nhigh,runfile='ADRIZ_{}'.format(out),
@@ -186,7 +245,8 @@ if __name__ == '__main__':
     if options.f != None:
         filts = [filt.upper() for filt in options.f]
     exps_by_filt = parse_filters(filts)
-    teal.teal('astrodrizzle')
-    p = Pool(24)
-    p.map(final_drizzle,exps_by_filt)
+    if options.t:
+        teal.teal('astrodrizzle')
+    p = Pool(options.n)
     # map(final_drizzle,exps_by_filt)
+    p.map(final_drizzle,exps_by_filt)

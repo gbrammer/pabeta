@@ -11,7 +11,7 @@ from multiprocessing import Pool
 import numpy as np
 
 def parse_args():
-    """Parse command line arguements.
+    """Parse command line arguments.
 
     Parameters:
         Nothing
@@ -114,7 +114,7 @@ def make_silhouette_plot(fp_list, ra, dec):
         im = fp_list[i]
         for ext in im:
             plot_patch(ax,ext,colors[i],alpha)
-    ax.set_xlim(min(ra),max(ra))
+    ax.set_xlim(max(ra),min(ra))
     ax.set_ylim(min(dec),max(dec))
     plt.show()
 

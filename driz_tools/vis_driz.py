@@ -22,11 +22,14 @@ def parse_args():
 
     ncore_help = 'Number of cores to use with parallel processing? Default 8'
     updatewcs_help = 'Update WCS? Default False.'
+    teal_help = 'Show teal interface for AstroDrizzle?  Default False'
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', help=ncore_help, action='store',
-        required=False, default=8, type=int)
+        required=False, default=32, type=int)
     parser.add_argument('-u', help=updatewcs_help, action='store_true',
+        required=False)
+    parser.add_argument('-t', help=teal_help, action='store_true',
         required=False)
     arguments = parser.parse_args()
     return arguments
@@ -63,10 +66,10 @@ def driz(exps):
 
     if det == 'IR' or len(exps)<2:
         astrodrizzle.AstroDrizzle(exps,output=fname, mdriztab=False, num_cores=1,
-                                in_memory=False,median=False, clean=True,build=True,
+                                in_memory=True,median=False, clean=True,build=True,
                                 blot=False,driz_cr=False,runfile='adriz_{}'.format(fname))
     else:
-        astrodrizzle.AstroDrizzle(exps,output=fname,num_cores=1, in_memory=False,
+        astrodrizzle.AstroDrizzle(exps,output=fname,num_cores=1, in_memory=True,
                         clean=True, build=True, combine_type=med_alg,
                         runfile='adriz_{}'.format(fname), mdriztab=False, combine_nhigh=combine_nhigh)
 def parse_wfc3_visit(visit):
@@ -133,11 +136,6 @@ if __name__ == '__main__':
             filter_visits.append(ln)
 
     if options.u:
-        print '______________________________'
-        print '______________________________'
-        print 'Updating WCS'
-        print '______________________________'
-        print '______________________________'
         p.map(upwcs, ims)
 
     print '______________________________'
@@ -146,5 +144,6 @@ if __name__ == '__main__':
     print '______________________________'
     print '______________________________'
     print len(filter_visits)
-    # teal.teal('astrodrizzle')
+    if options.t:
+        teal.teal('astrodrizzle')
     p.map(driz, filter_visits)

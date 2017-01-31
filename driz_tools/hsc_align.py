@@ -49,11 +49,11 @@ def calc_shift(im, radec):
     elif det == 'IR':
         cw = 2.5*(0.13/.1)
     tweakreg.TweakReg(im, updatehdr=False, expand_refcat=False,enforce_user_order=True,
-    imagefindcfg={'threshold':3.,'conv_width':cw},refcat=radec,shiftfile=True,
+    imagefindcfg={'threshold':5.,'conv_width':cw},refcat=radec,shiftfile=True,
     outshifts='single_shift.txt',outwcs='hsc_shifts_wcs.fits', refimage=None)
 
 def shift_wrap():
-    good_shift = raw_input('Is shift good? y/n  ')
+    good_shift = raw_input('Is shift good? y/[n]  ')
     if good_shift == 'y':
         untweaked, shiftfile = write_full_shiftfile()
         updatehdr.update_from_shiftfile(shiftfile,wcsname='HSC')
@@ -119,21 +119,25 @@ if __name__ == '__main__':
     all_cats = glob.glob('{}/*_hsc.radec'.format(cat_path))
     cats = []
 
+    if not os.path.exists(targ+'_hsc.radec'):
+        for derp in all_cats:
+            if targ in derp.upper():
+                print derp
+                cats.append(derp)
+        if len(cats) > 1:
+            print 'TOO MANY CATALOGS MATCHED'
+            raise
+        else:
+            cat = cats[0]
+            shutil.copy(cat,'.')
+            cat = os.path.split(cat)[-1]
+            print cat
+
+    else: cat = targ+'_hsc.radec'
+
     if options.t: teal.teal('tweakreg')
 
-    for derp in all_cats:
-        if targ in derp.upper():
-            print derp
-            cats.append(derp)
-    if len(cats) > 1:
-        print 'TOO MANY CATALOGS MATCHED'
-        raise
-    else:
-        cat = cats[0]
     if os.path.exists(cat):
-        shutil.copy(cat,'.')
-        cat = os.path.split(cat)[-1]
-        print cat
         if options.a: calc_shift(ims[0],cat)
         shift_wrap()
     else:

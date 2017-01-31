@@ -63,13 +63,16 @@ if __name__ == '__main__':
         hdr = fits.getheader(f)
         if hdr['DETECTOR'] == 'IR':
             ir_ims.append(f)
-        elif hdr['DETECTOR'] == 'UVIS' or hdr['DETECTOR'] == 'WFC':
+        elif fits.getval(ref, 'DETECTOR') in ['UVIS', 'WFC', 'SBC', 'PC', 'HRC']:
             vis_ims.append(f)
     if fits.getval(ref, 'DETECTOR') == 'IR':
         thresh = 5.
         cw = 2.5
-    elif fits.getval(ref, 'DETECTOR') == 'UVIS' or fits.getval(ref, 'DETECTOR') == 'WFC':
-        thresh = 20.
+    if fits.getval(ref, 'DETECTOR') == 'HRC':
+        thresh = 4.
+        cw = 4.
+    elif fits.getval(ref, 'DETECTOR') in ['UVIS', 'WFC', 'SBC', 'PC']:
+        thresh = 25.
         cw = 3.5
 
     # Determine WCS name
@@ -85,6 +88,6 @@ if __name__ == '__main__':
         imagefindcfg={'threshold':5.,'conv_width':3.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
         refcat=options.c,shiftfile=True,outshifts='vis_shifts.txt', wcsname=wcsname)
     if len(ir_ims)>0:
-        tweakreg.TweakReg(ir_ims, updatehdr=True, expand_refcat=False,enforce_user_order=True,refimage=ref,
+        tweakreg.TweakReg(ir_ims, updatehdr=True, expand_refcat=False,enforce_user_order=False,refimage=ref,
         imagefindcfg={'threshold':5.,'conv_width':2.5}, refimagefindcfg={'threshold':thresh,'conv_width':cw},
         refcat=options.c,shiftfile=True,outshifts='ir_shifts.txt', wcsname=wcsname)
