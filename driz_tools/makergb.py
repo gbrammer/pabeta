@@ -1,4 +1,5 @@
 from astropy.io import fits
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
@@ -24,20 +25,19 @@ def parse_args():
     green_help = 'Green Image name'
     blue_help = 'Blue Image name'
     scale_help = 'Scale to use, either \"log\" (default), \"sqrt"\" or \"asinh\"'
+    lo_help = 'Lower percentage threshold for clipping?  Deafult 0.1%%'
+    hi_help = 'Upper percentage threshold for clipping?  Deafult 99.0%%'
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('r', type=str, help=red_help, action='store',
-        required=True)
-    parser.add_argument('g', type=str, help=green_help, action='store',
-        required=True)
-    parser.add_argument('b', type=str, help=blue_help, action='store',
-        required=True)
+    parser.add_argument('r', type=str, help=red_help, action='store')
+    parser.add_argument('g', type=str, help=green_help, action='store')
+    parser.add_argument('b', type=str, help=blue_help, action='store')
     parser.add_argument('-s', type=str, help=scale_help, action='store',
         required=False, default='log')
-    parser.add_argument('-l', type=float, help=scale_help, action='store',
-        required=False, default='log')
-    parser.add_argument('-h', type=float, help=scale_help, action='store',
-        required=False, default='log')
+    parser.add_argument('-l', type=float, help=lo_help, action='store',
+        required=False, default=.1)
+    parser.add_argument('-u', type=float, help=hi_help, action='store',
+        required=False, default=99.0)
     arguments = parser.parse_args()
     return arguments
 
@@ -112,8 +112,12 @@ if __name__ == '__main__':
     rim, gim, bim = options.r, options.g, options.b
 
     lo = options.l
-    hi = options.h
+    hi = options.u
     ims = [fits.getdata(rim), fits.getdata(gim), fits.getdata(bim)]
+    if not ims[0].shape == ims[1].shape == ims[2].shape:
+        print 'DIMENSIONS OF IMAGES ARE NOT EQUAL'
+        print 'This code does not yet support images of different sizes or pixel scales'
+        raise
 
     if options.s == 'log':
         scale_method = logscl
