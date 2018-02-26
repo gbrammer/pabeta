@@ -9,7 +9,9 @@ IRAS18090+0130		    	True		True
 IRASF10038-3338			True		True
 IRASF16164-0746             	True		True
 IRASF16399-0937			True		True
+M51				False		True
 M82		            	False		True
+M83				False		True
 MCG-02-01-051			True		True
 MCG+00-29-023	            	None		True
 MCG+12-02-001	            	True		True

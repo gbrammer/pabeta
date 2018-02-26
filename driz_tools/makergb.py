@@ -1,10 +1,12 @@
 from astropy.io import fits
+import os
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
 from PIL import Image
 from multiprocessing import Pool
+from ginga.util import zscale
 
 
 def parse_args():
@@ -25,19 +27,29 @@ def parse_args():
     green_help = 'Green Image name'
     blue_help = 'Blue Image name'
     scale_help = 'Scale to use, either \"log\" (default), \"sqrt"\" or \"asinh\"'
-    lo_help = 'Lower percentage threshold for clipping?  Deafult 0.1%%'
-    hi_help = 'Upper percentage threshold for clipping?  Deafult 99.0%%'
+    lo_help = 'Lower percentage threshold for clipping?  Default 0.1%%'
+    hi_help = 'Upper percentage threshold for clipping?  Default 99.0%%'
+    pseudog_help = 'Make pseudo green from red and blue ims?  Default False'
+    deactivate_mp_help = 'Deactivate multiprocessing (recommended for large images)? Default False'
+    zscale_help= 'Compute scale boundaries from zscasle algorithm (z1,100.*z2)?  Default False'
 
     parser = argparse.ArgumentParser()
     parser.add_argument('r', type=str, help=red_help, action='store')
     parser.add_argument('g', type=str, help=green_help, action='store')
     parser.add_argument('b', type=str, help=blue_help, action='store')
+
     parser.add_argument('-s', type=str, help=scale_help, action='store',
         required=False, default='log')
     parser.add_argument('-l', type=float, help=lo_help, action='store',
         required=False, default=.1)
     parser.add_argument('-u', type=float, help=hi_help, action='store',
         required=False, default=99.0)
+    parser.add_argument('-p', help=pseudog_help, action='store_true',
+        required=False)
+    parser.add_argument('-d', help=deactivate_mp_help, action='store_true',
+        required=False)
+    parser.add_argument('-z', help=zscale_help, action='store_true',
+        required=False)
     arguments = parser.parse_args()
     return arguments
 
@@ -52,16 +64,24 @@ def pctscale(data,lo=0.1,hi=99.5):
     lv, hv = np.nanpercentile(data, [lo,hi])
     print 'Getting nanmask'
     nanmask = np.isnan(data)
-    # print 'fraction of pixels as nan:', np.mean(nanmask.astype('float'))
-#     plt.imshow(nanmask.astype('float'))
-#     plt.show()
-    if lv<0:
-        lv = 0.
+
     print 'Low val at {}%% level is {}'.format(lo,lv)
     print 'High val at {}%% level is {}'.format(hi,hv)
     data[nanmask] = lv
     data[data<lv] = lv
     data[data>hv] = hv
+    return data
+
+def do_zscale(data):
+    z1, z2 = zscale.zscale(data)
+    print 'Getting nanmask'
+    nanmask = np.isnan(data)
+
+    print 'Low val at z1 is {}'.format(z1)
+    print 'High val at 100*z2 level is {}'.format(100.*z2)
+
+    data[nanmask] = z1
+    data = data.clip(z1, 100.*z2)
     return data
 
 def bitrange(data):
@@ -81,7 +101,7 @@ def asinh(data):
 
 def logscl(data):
     '''Remap data from [min,max] to [0,1.0] and apply log scale'''
-    a = 50.
+    a = 1000.
     lo = np.amin(data)
     hi = np.amax(data)
     data = ((data-lo)/(hi-lo))
@@ -97,14 +117,17 @@ def sqrt(data):
     return data
 
 def wrap(im):
-    rscl = scale_method(pctscale(im,lo,hi))
+    if options.z:
+        rscl = scale_method(do_zscale(im))
+    else:
+        rscl = scale_method(pctscale(im,lo,hi))
     r8bit = bitrange(rscl)
     # print im, 'DONE'
+    print '\n'
     return r8bit
 
 
 if __name__ == '__main__':
-    drzs = sorted(glob.glob('F*_dr?.fits'))
     # print drzs
 
     options = parse_args()
@@ -128,9 +151,32 @@ if __name__ == '__main__':
     else:
         print 'Invalid scale method given, use -h for help.'
         raise
-    scls = Pool(3).map(wrap, ims)
-    # scls = map(wrap, ims)
-    img = Image.fromarray(np.fliplr(np.dstack(scls)))
-    print 'Making image'
-    img.save('final_{}_{}_{}.jpeg'.format(scale_method.func_name,lo,hi))
-    print 'Image made'
+
+    if options.d:
+        if options.p:  # skip making the green if using pseudogreen
+            scls = [wrap(ims[0]),None,wrap(ims[2])]
+        else:
+            scls = map(wrap, ims)
+    else:
+        scls = Pool(3).map(wrap, ims)
+
+    filt_names = [os.path.split(x)[-1].split('_')[0] for x in [rim, gim, bim]]
+    if options.p:
+        filt_names[1] = 'PSEUDOGREEN'
+    filt_string = '_'.join(filt_names)
+
+    if options.p:
+        print 'Making pseudogreen from average red and blue\n'
+        scls[1] = np.nanmean([scls[0],scls[2]],axis=0).astype('uint8')
+
+    print 'Making image object'
+    img = Image.fromarray(np.flipud(np.dstack(scls)))
+    print 'Saving image'
+
+    targ = os.path.split(os.getcwd())[-1]
+    if options.z:
+        jpg_name = '{}_{}_{}_zscale.jpeg'.format(targ,filt_string,scale_method.func_name)
+    else:
+        jpg_name = '{}_{}_{}_{}_{}.jpeg'.format(targ,filt_string,scale_method.func_name,lo,hi)
+    img.save(jpg_name)
+    print 'Image saved: {}'.format(jpg_name)

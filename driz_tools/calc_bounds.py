@@ -39,6 +39,7 @@ def parse_args():
     return arguments
 
 def get_footprints(im):
+    """Get footprints of images- handle images with >1 chip"""
     fps = []
     hdu = fits.open(im)
     flt_flag = 'flt.fits' in im or 'flc.fits' in im
@@ -76,7 +77,6 @@ def bounds(fp_list,write=False):
         for ext in im:
             merged.append(ext)
     merged = np.vstack(merged)
-    print merged.shape
     ra = merged[:,0]
     dec = merged[:,1]
     delta_ra = (max(ra)-min(ra))*math.cos(math.radians(min(np.absolute(dec))))
@@ -98,7 +98,8 @@ def bounds(fp_list,write=False):
     print 'UVIS+WFC: {} x {} pix'.format(delta_ra_arcsec/0.05, delta_dec_arcsec/0.05)
     return ra, dec
 
-def make_silhouette_plot(fp_list, ra, dec):
+def make_silhouette_plot(fp_list, ra, dec, cat=None):
+    """Makes plot of the image footprints"""
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
     from matplotlib.path import Path
@@ -110,15 +111,25 @@ def make_silhouette_plot(fp_list, ra, dec):
     n_images = len(fp_list)
     alpha = 1./float(n_images+1.)+.1
 
-    for i in range(len(fp_list)):
+    for i in range(n_images):
         im = fp_list[i]
         for ext in im:
             plot_patch(ax,ext,colors[i],alpha)
     ax.set_xlim(max(ra),min(ra))
     ax.set_ylim(min(dec),max(dec))
+    plt.xlabel('RA [deg]')
+    plt.ylabel('Dec [deg]')
+    plt.title('Number of images: {}'.format(n_images))
+    # plt.grid(ls=':',alpha=.2,color='k')
+
+    if cat:
+        cat_ras, cat_decs = np.loadtxt(cat, unpack=True)
+        plt.scatter(cat_ras, cat_decs, s=3, alpha=.3)
+
     plt.show()
 
 def plot_patch(ax ,corners, color, alpha):
+    """Handles plotting of individual footprints"""
     from matplotlib.path import Path
     import matplotlib.patches as patches
     codes = [Path.MOVETO,Path.LINETO,Path.LINETO,Path.LINETO]
@@ -130,7 +141,7 @@ def plot_patch(ax ,corners, color, alpha):
 if __name__ == '__main__':
     options = parse_args()
     ims = glob.glob(options.i)
-    p = Pool(8)
+    p = Pool(32)
     fp_list = p.map(get_footprints, ims)
     ra, dec = bounds(fp_list,options.w)
     if options.p:

@@ -1,5 +1,4 @@
-from drizzlepac import astrodrizzle, tweakreg, tweakback
-from stwcs import updatewcs
+from drizzlepac import astrodrizzle
 import glob, os
 from astropy.io import fits
 from multiprocessing import Pool
@@ -154,6 +153,8 @@ def final_drizzle(exps):
             filt = filt2
     elif inst == 'WFPC2':
         filt = hdr['FILTNAM1']
+    elif inst == 'STIS':
+        filt = hdr['OPT_ELEM']
     else: filt = hdr['FILTER']
     targ = os.getcwd().split('/')[-1]
     det = hdr['DETECTOR']
@@ -167,7 +168,7 @@ def final_drizzle(exps):
 
     combine_nhigh = 1
     med_alg = 'iminmed'
-    if len(exps) > 4:
+    if len(exps) > 150:
         med_alg = 'imedian'
         if len(exps) > 7:
             combine_nhigh = 3
@@ -177,7 +178,7 @@ def final_drizzle(exps):
         scl = 0.1
     elif det == 'WFC' or det == 'UVIS' or det == 'PC':
         scl = 0.05
-    elif det == 'SBC' or det == 'HRC':
+    elif det == 'SBC' or det == 'HRC' or det == 'FUV-MAMA':
         scl = 0.025
 
     if options.hipeec:
@@ -186,7 +187,7 @@ def final_drizzle(exps):
             scl = 0.12
         elif det == 'WFC' or det == 'UVIS' or det == 'PC':
             scl = 0.04
-        elif det == 'SBC' or det == 'HRC':
+        elif det == 'SBC' or det == 'HRC' or det == 'FUV-MAMA':
             scl = 0.03
 
     if options.d:
@@ -196,7 +197,7 @@ def final_drizzle(exps):
             scl = 0.05
         elif det == 'UVIS':
             scl = 0.04
-        elif det == 'SBC' or det == 'HRC':
+        elif det == 'SBC' or det == 'HRC' or det == 'FUV-MAMA':
             scl = 0.025
 
     if os.path.exists('dimensions.txt'):
@@ -209,29 +210,32 @@ def final_drizzle(exps):
     else:
         outnx, outny, ra, dec, rot = None, None, None, None, None
 
-
-    if det == 'IR' or det == 'SBC' or len(exps)==1:
-        astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
-                                in_memory=True,final_wcs=True,final_rot=rot,
+    mem, nc = True, 1
+    if options.n == 0:
+        nc = None
+        mem = False
+    if det == 'IR' or det == 'SBC' or det == 'FUV-MAMA' or len(exps)==1:
+        astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=nc,
+                                in_memory=mem,final_wcs=True,final_rot=rot,
                                 final_outnx=outnx,final_outny=outny, final_ra=ra,
                                 final_dec=dec,final_scale=scl,median=False,
                                 blot=False,driz_cr=False,runfile='ADRIZ_{}'.format(out),
-                                clean=True,build=True
+                                clean=True,build=True, context=False)
     elif det == 'PC':
-        astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
-                                in_memory=True,final_wcs=True,final_rot=rot,
+        astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=nc,
+                                in_memory=mem,final_wcs=True,final_rot=rot,
                                 final_outnx=outnx,final_outny=outny, final_ra=ra,
                                 final_dec=dec,final_scale=scl,combine_type=med_alg,
                                 combine_nhigh=combine_nhigh,runfile='ADRIZ_{}'.format(out),
                                 clean=True,build=True, driz_cr_snr='5.5 3.5',
-                                driz_cr_scale='2.0 1.5')
+                                driz_cr_scale='2.0 1.5', context=False)
     else:
-        astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=1,
-                                in_memory=True,final_wcs=True,final_rot=rot,
+        astrodrizzle.AstroDrizzle(exps,output=out, mdriztab=False, num_cores=nc,
+                                in_memory=mem,final_wcs=True,final_rot=rot,
                                 final_outnx=outnx,final_outny=outny, final_ra=ra,
                                 final_dec=dec,final_scale=scl,combine_type=med_alg,
                                 combine_nhigh=combine_nhigh,runfile='ADRIZ_{}'.format(out),
-                                clean=True,build=True)
+                                clean=True,build=True, context=False)
 
     input_wcs = fits.getval(exps[0],'wcsname',1)
     if input_wcs == 'HSC':
@@ -243,10 +247,13 @@ if __name__ == '__main__':
     options = parse_args()
     filts = options.f
     if options.f != None:
-        filts = [filt.upper() for filt in options.f]
+        filts = [filt.upper() for filt in filts]
     exps_by_filt = parse_filters(filts)
     if options.t:
         teal.teal('astrodrizzle')
-    p = Pool(options.n)
-    # map(final_drizzle,exps_by_filt)
-    p.map(final_drizzle,exps_by_filt)
+
+    if options.n != 0:
+        p = Pool(options.n)
+        p.map(final_drizzle,exps_by_filt)
+    else:
+        map(final_drizzle,exps_by_filt)

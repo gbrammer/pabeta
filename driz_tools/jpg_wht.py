@@ -41,11 +41,11 @@ def make_wht_jpg(im):
     """Open WHT FITS Image, scale to 8 bit and save ouput array as jpg"""
     wht_im = fits.getdata(im, 'WHT')
     wht_im = bitrange(wht_im)
-    img = Image.fromarray(wht_im)
+    img = Image.fromarray(np.flipud(wht_im))
     im_root = '_'.join(im.split('_')[:-1])
     if img.mode != 'RGB':
         img = img.convert('RGB')
-    img.save('wht_{}_.jpg'.format(im_root))
+    img.save('wht_{}.jpg'.format(im_root))
     print 'made wht image jpg for {}'.format(im_root)
 
 

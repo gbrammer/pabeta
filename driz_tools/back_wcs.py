@@ -30,6 +30,7 @@ def parse_args():
     return arguments
 
 def tback(drz):
+    """Runs tweakback to align flt/flcs with the drz/drc astrometry"""
     flts = tweakback.extract_input_filenames(drz)
     print 'Tweaking back exposures for {} with input ims:'.format(drz)
     for f in flts:
